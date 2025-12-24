@@ -49,3 +49,16 @@ pip install -r requirements.txt
 pytest -q
 ```
 
+## Docker
+
+Build and run a Docker image for the backend:
+
+```bash
+# build
+docker build -f Dockerfile -t tayyebi/codocs:latest .
+# run
+docker run -p 5000:5000 --env SECRET_KEY=dev tayyebi/codocs:latest
+```
+
+You can also push to GitHub Container Registry from GitHub Actions (the included CI workflow tags and pushes images to `ghcr.io/${{ github.repository_owner }}/codocs`).
+

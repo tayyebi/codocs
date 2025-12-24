@@ -1,0 +1,87 @@
+name: CI — tests, package extension, build docker
+
+on:
+  push:
+    branches: [ main ]
+    tags: ['v*', 'release-*']
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+      - name: Run pytest
+        run: |
+          mkdir -p reports
+          pytest -q --junitxml=reports/junit.xml
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-report
+          path: reports/
+
+  package-extension:
+    name: Package extension
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create extension zip
+        run: |
+          cd extension
+          zip -r ../codocs-extension-${{ github.sha }}.zip .
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: codocs-extension-${{ github.sha }}.zip
+
+  build-docker:
+    name: Build Docker image and save artifact
+    runs-on: ubuntu-latest
+    needs: [tests, package-extension]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to ghcr
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and tag image
+        run: |
+          docker build -f backend/Dockerfile -t ghcr.io/${{ github.repository_owner }}/codocs:${{ github.sha }} -t ghcr.io/${{ github.repository_owner }}/codocs:latest .
+      - name: Push image
+        run: |
+          docker push ghcr.io/${{ github.repository_owner }}/codocs:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/codocs:latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Save image as artifact
+        run: |
+          docker save ghcr.io/${{ github.repository_owner }}/codocs:${{ github.sha }} | gzip > codocs-image-${{ github.sha }}.tar.gz
+      - name: Upload docker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: codocs-image-${{ github.sha }}.tar.gz

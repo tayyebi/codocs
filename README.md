@@ -56,6 +56,14 @@ python app.py
 - Owner can manage team, transfer ownership, and set members' roles.
 - Admins can add/remove members and change roles (not ownership), members can comment, viewers read-only.
 
+## Docker image
+
+A Dockerfile is included in `backend/Dockerfile`. The CI builds and pushes images to GitHub Container Registry as part of the `CI` workflow (tags: `ghcr.io/<owner>/codocs:latest` and by sha).
+
+## Extension packaging
+
+The `extension/` directory contains the extension sources. The CI packages the extension into a ZIP and uploads it as a workflow artifact. You can also load the unpacked extension during development.
+
 New features in this update:
 - Polished members management UI (modal with inline role dropdowns) in the extension popup.
 - In-page real-time notifications and badges: the content script polls new comments for the active CoSpace and shows toast notifications and spatial badges on matched elements.

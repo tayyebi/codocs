@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Codocs Extension",
+  "version": "0.1.0",
+  "description": "Codocs in-page comments demo",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["<all_urls>"],
+  "action": {},
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
