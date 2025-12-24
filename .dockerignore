@@ -1,13 +1,54 @@
-.venv
-__pycache__/
+# Exclude git metadata
 .git
+.gitignore
+
+# Python cache / artifacts
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Packaging
 build/
 dist/
-venv/
-env/
+*.egg-info/
+pip-wheel-metadata/
+*.egg
+
+# Tests & coverage
+.pytest_cache/
+.cache/
+coverage/
+htmlcov/
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets and local config
+.env
+.env.*
+instance/
+*.sqlite3
+*.db
+
+# Node
 node_modules/
-*.tar.gz
-*.zip
+
+# Docker local overrides
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Extension outputs
+extension/build/
+extension/dist/
