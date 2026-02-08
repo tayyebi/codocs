@@ -19,8 +19,9 @@ def test_owner_can_add_and_remove_member(client, app):
         db.session.add_all([team, tm])
         db.session.commit()
         team_id = team.id
+        owner_id = owner.id
 
-    login(client, owner.id)
+    login(client, owner_id)
     # add alice
     res = client.post(f'/api/teams/{team_id}/members', json={'github_username': 'alice', 'role': 'member'})
     assert res.status_code == 200
@@ -59,8 +60,9 @@ def test_non_admin_cannot_add_member(client, app):
         db.session.add_all([team, tm_owner, tm_bob])
         db.session.commit()
         team_id = team.id
+        bob_id = bob.id
 
-    login(client, bob.id)
+    login(client, bob_id)
     res = client.post(f'/api/teams/{team_id}/members', json={'github_username':'carol','role':'member'})
     assert res.status_code == 403
 
@@ -77,8 +79,9 @@ def test_admin_can_add_member(client, app):
         db.session.add_all([team, tm_owner, tm_admin])
         db.session.commit()
         team_id = team.id
+        admin_id = admin.id
 
-    login(client, admin.id)
+    login(client, admin_id)
     res = client.post(f'/api/teams/{team_id}/members', json={'github_username':'carol2','role':'member'})
     assert res.status_code == 200
     j = res.get_json(); assert j.get('ok')

@@ -52,5 +52,5 @@ class Comment(db.Model):
     author = db.relationship('User')
     selector = db.Column(db.String(512), nullable=True)
     text = db.Column(db.Text, nullable=True)
-    metadata = db.Column(db.Text, nullable=True)
+    comment_metadata = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
