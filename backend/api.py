@@ -109,7 +109,7 @@ def post_comment():
     # check team membership & permissions: viewers may not comment
     if not require_roles(user, cospace.team, ['owner', 'admin', 'member']):
         return jsonify({'error': 'insufficient role to post comments'}), 403
-    comment = Comment(cospace=cospace, author=user, selector=data.get('selector'), text=data.get('text'), metadata=data.get('metadata'))
+    comment = Comment(cospace=cospace, author=user, selector=data.get('selector'), text=data.get('text'), comment_metadata=data.get('metadata'))
     db.session.add(comment)
     db.session.commit()
     # Broadcast via socket
