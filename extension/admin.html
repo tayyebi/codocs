@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codocs Admin</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+    header {
+      background: #1e293b;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #334155;
+    }
+    header h1 { font-size: 18px; flex: 1; }
+    .container { max-width: 800px; margin: 0 auto; padding: 24px; }
+    h2 { font-size: 15px; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    .card {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+    }
+    .btn {
+      padding: 6px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-danger  { background: #ef4444; color: #fff; }
+    .btn-danger:hover  { background: #dc2626; }
+    .btn-ghost  { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-ghost:hover  { color: #f1f5f9; }
+    input {
+      background: #0f172a;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      margin-right: 8px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: #64748b; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid #334155; }
+    td { padding: 8px; border-bottom: 1px solid #1e293b; }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #334155;
+      color: #94a3b8;
+    }
+    .badge-admin { background: #7c3aed; color: #fff; }
+    .error { color: #f87171; margin-top: 8px; font-size: 12px; }
+    .success { color: #4ade80; margin-top: 8px; font-size: 12px; }
+    #login-section label { display: block; color: #94a3b8; font-size: 12px; margin-top: 10px; }
+    #login-section input { display: block; width: 100%; margin-top: 4px; margin-right: 0; }
+    #login-section .btn { margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📌 Codocs Admin</h1>
+    <span id="hdr-user" style="color:#64748b;font-size:13px"></span>
+    <button class="btn btn-ghost" id="btn-logout" style="display:none">Sign out</button>
+  </header>
+
+  <div class="container">
+    <!-- Login -->
+    <div id="login-section" class="card">
+      <h2>Sign in</h2>
+      <label>Server URL</label>
+      <input id="inp-server" placeholder="http://localhost:8080" style="display:block;width:100%;margin:4px 0 0" />
+      <label>Username</label>
+      <input id="inp-username" />
+      <label>Password</label>
+      <input id="inp-password" type="password" />
+      <button class="btn btn-primary" id="btn-login">Sign in</button>
+      <div id="login-msg"></div>
+    </div>
+
+    <!-- Admin panel -->
+    <div id="admin-section" style="display:none">
+      <!-- Server config -->
+      <div class="card">
+        <h2>Server</h2>
+        <span id="server-info" style="color:#94a3b8;font-size:13px"></span>
+      </div>
+
+      <!-- Users -->
+      <div class="card">
+        <h2>Users</h2>
+        <button class="btn btn-primary" id="btn-refresh-users" style="margin-bottom:12px">Refresh</button>
+        <table>
+          <thead>
+            <tr><th>Username</th><th>Actor URL</th><th>Role</th><th>Joined</th><th></th></tr>
+          </thead>
+          <tbody id="users-tbody">
+            <tr><td colspan="5" style="color:#64748b">Loading…</td></tr>
+          </tbody>
+        </table>
+        <div id="users-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

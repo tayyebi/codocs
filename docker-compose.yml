@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: codocs
+      POSTGRES_USER: codocs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codocs_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U codocs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: postgres://codocs:${POSTGRES_PASSWORD:-codocs_secret}@db:5432/codocs
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      INSTANCE_DOMAIN: ${INSTANCE_DOMAIN:-localhost}
+      INSTANCE_URL: ${INSTANCE_URL:-http://localhost:8080}
+      PORT: 8080
+      RUST_LOG: codocs=info,actix_web=warn
+
+volumes:
+  postgres_data:
