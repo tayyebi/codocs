@@ -1,179 +1,157 @@
-/* Simple content script to enable comment anchoring and show live notifications */
-(function(){
-  let commentMode = false;
-  let lastHover = null;
+/**
+ * content.js – injected into every page.
+ * Fetches and renders sticky notes; handles element-picking for note creation.
+ */
+(function () {
+  if (window.__codocs_loaded) return;
+  window.__codocs_loaded = true;
 
-  function computeSelector(el){
-    if(!el) return null;
-    let path = [];
-    while(el && el.nodeType === Node.ELEMENT_NODE){
-      let selector = el.nodeName.toLowerCase();
-      if(el.id){
-        selector += '#'+el.id;
-        path.unshift(selector);
-        break;
-      } else {
-        let sib = el, nth = 1;
-        while((sib = sib.previousElementSibling) != null){
-          if(sib.nodeName === el.nodeName) nth++;
-        }
-        if(nth !== 1){ selector += `:nth-of-type(${nth})`; }
-      }
-      path.unshift(selector);
+  // ── Styles ────────────────────────────────────────────────────────────────
+  const style = document.createElement('style');
+  style.textContent = `
+    .cdx-badge {
+      position: absolute;
+      z-index: 2147483647;
+      background: #fbbf24;
+      color: #1f2937;
+      font: bold 11px/1 sans-serif;
+      padding: 3px 7px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,.35);
+      white-space: nowrap;
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cdx-badge:hover { background: #f59e0b; }
+    .cdx-pick-outline { outline: 3px solid #3b82f6 !important; cursor: crosshair !important; }
+    .cdx-toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 2147483647;
+      background: #1e293b; color: #f1f5f9; padding: 10px 16px;
+      border-radius: 8px; font: 13px/1.4 sans-serif;
+      box-shadow: 0 4px 14px rgba(0,0,0,.4); max-width: 320px;
+      animation: cdx-slide-in .2s ease;
+    }
+    @keyframes cdx-slide-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  `;
+  document.head.appendChild(style);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function computeSelector(el) {
+    const path = [];
+    while (el && el.nodeType === Node.ELEMENT_NODE) {
+      let seg = el.nodeName.toLowerCase();
+      if (el.id) { seg += '#' + el.id; path.unshift(seg); break; }
+      let nth = 1, sib = el;
+      while ((sib = sib.previousElementSibling)) { if (sib.nodeName === el.nodeName) nth++; }
+      if (nth > 1) seg += `:nth-of-type(${nth})`;
+      path.unshift(seg);
       el = el.parentElement;
     }
     return path.join(' > ');
   }
 
-  function highlight(el){
-    if(!el) return;
-    el.style.outline = '3px solid #ffcc00';
-  }
-  function clearHighlight(el){
-    if(!el) return;
-    el.style.outline = '';
-  }
-
-  function onClick(e){
-    if(!commentMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const selector = computeSelector(e.target);
-    const payload = {selector, href: location.href};
-    // send to extension popup
-    window.postMessage({type:'cospace-comment-anchor', payload}, '*');
-    disableMode();
+  function toast(msg, duration = 5000) {
+    const t = document.createElement('div');
+    t.className = 'cdx-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), duration);
   }
 
-  function onMouseOver(e){
-    if(!commentMode) return;
-    if(lastHover && lastHover !== e.target) clearHighlight(lastHover);
-    highlight(e.target);
-    lastHover = e.target;
+  // ── Note badges ───────────────────────────────────────────────────────────
+  const badges = [];
+
+  function placeBadge(note) {
+    const el = note.selector ? document.querySelector(note.selector) : null;
+    const badge = document.createElement('div');
+    badge.className = 'cdx-badge';
+    badge.title = `${note.author}: ${note.body}`;
+    badge.textContent = `💬 ${note.author}`;
+    badge.addEventListener('click', () => {
+      toast(`${note.author}: ${note.body}`, 8000);
+    });
+    document.body.appendChild(badge);
+    const entry = { el, badge, note };
+    badges.push(entry);
+    updatePositions();
   }
 
-  function enableMode(){
-    commentMode = true;
-    document.addEventListener('click', onClick, true);
-    document.addEventListener('mouseover', onMouseOver, true);
-  }
-  function disableMode(){
-    commentMode = false;
-    document.removeEventListener('click', onClick, true);
-    document.removeEventListener('mouseover', onMouseOver, true);
-    if(lastHover) clearHighlight(lastHover);
-    lastHover = null;
-  }
-
-  // listen to messages from extension popup
-  window.addEventListener('message', (e)=>{
-    if(e.source !== window) return;
-    const data = e.data || {};
-    if(data.type === 'cospace-enable-comment-mode'){
-      enableMode();
-    } else if(data.type === 'cospace-disable-comment-mode'){
-      disableMode();
-    }
-  });
-
-  // NEW: Long-poll loop for comments for active cospace
-  let longPollAbort = null;
-  let lastSeenId = 0;
-
-  async function getActiveCospaceId(){
-    return new Promise((resolve)=>{
-      try{ chrome.storage.local.get(['activeCospaceId'], (res)=>{ resolve(res.activeCospaceId); }); } catch(e){ resolve(null); }
+  function updatePositions() {
+    badges.forEach(({ el, badge }) => {
+      if (!el) {
+        badge.style.bottom = '80px';
+        badge.style.right = '24px';
+        badge.style.position = 'fixed';
+        return;
+      }
+      try {
+        const r = el.getBoundingClientRect();
+        badge.style.top = `${window.scrollY + r.top}px`;
+        badge.style.left = `${window.scrollX + r.right - 8}px`;
+      } catch (_) { badge.remove(); }
     });
   }
 
-  function showToast(text, onClick){
-    const t = document.createElement('div'); t.className = 'toast'; t.textContent = text; document.body.appendChild(t);
-    t.addEventListener('click', ()=>{ if(onClick) onClick(); t.remove(); });
-    setTimeout(()=>{ t.remove(); }, 8000);
-  }
+  window.addEventListener('scroll', updatePositions, { passive: true });
+  window.addEventListener('resize', updatePositions, { passive: true });
 
-  function attachBadgeToElement(el, comment){
-    if(!el) return;
-    const previousOutline = el.style.outline;
-    el.style.outline = '3px solid #4ade80';
-    const badge = document.createElement('div'); badge.textContent = '💬'; badge.className = 'cospace-badge';
-    Object.assign(badge.style, { position:'absolute', background:'rgba(0,0,0,0.7)', color:'#fff', padding:'2px 6px', borderRadius:'12px', fontSize:'12px', zIndex:999999 });
-    document.body.appendChild(badge);
-    badge.addEventListener('click', ()=>{ alert(comment.author + ': ' + comment.text); });
-    // track badge for updates
-    window.__cospace_badges = window.__cospace_badges || [];
-    const entry = { el, badge, comment, previousOutline };
-    window.__cospace_badges.push(entry);
-    updateBadgePositions();
-    // remove after some time
-    setTimeout(()=>{ try{ badge.remove(); el.style.outline = previousOutline; window.__cospace_badges = (window.__cospace_badges || []).filter(b => b.badge !== badge); } catch(e){} }, 15000);
-  }
-
-  function updateBadgePositions(){
-    const items = window.__cospace_badges || [];
-    // sort by element top to avoid overlap stacking
-    items.sort((a,b)=>{ const ra = a.el.getBoundingClientRect(); const rb = b.el.getBoundingClientRect(); return ra.top - rb.top; });
-    for(let i=0;i<items.length;i++){
-      const {el, badge} = items[i];
-      try{
-        const rect = el.getBoundingClientRect();
-        badge.style.left = (window.scrollX + rect.right - 18) + 'px';
-        badge.style.top = (window.scrollY + rect.top - 8 + i*18) + 'px';
-      } catch(e){ /* element removed */ badge.remove(); }
-    }
-  }
-
-  let updateTimer = null;
-  function scheduleUpdate(){ if(updateTimer) return; updateTimer = setTimeout(()=>{ updateTimer = null; updateBadgePositions(); }, 50); }
-  window.addEventListener('scroll', scheduleUpdate, true);
-  window.addEventListener('resize', scheduleUpdate, true);
-  // Mutation observer to catch element moves/removals
-  const mo = new MutationObserver(scheduleUpdate);
-  mo.observe(document.body, { attributes:true, childList:true, subtree:true });
-
-  async function longPollLoop(){
-    // abort previous loop if any
-    if(longPollAbort){ try{ longPollAbort.abort(); } catch(e){} }
-    longPollAbort = new AbortController();
-    const signal = longPollAbort.signal;
-    const cospaceId = await getActiveCospaceId();
-    if(!cospaceId) return;
-    while(true){
-      try{
-        const res = await fetch('http://localhost:5000/api/comments/longpoll/' + cospaceId + '?since_id=' + lastSeenId + '&timeout=25', {credentials:'include', signal});
-        if(!res.ok) break;
-        const items = await res.json();
-        if(items && items.length){
-          for(const c of items){
-            if(c.id > lastSeenId) lastSeenId = c.id;
-            showToast((c.author||'Anonymous') + ': ' + (c.text.length>120? c.text.slice(0,120)+'...': c.text), ()=>{ window.open(chrome.runtime.getURL('dashboard.html'), '_blank'); });
-            if(c.selector){
-              try{ const el = document.querySelector(c.selector); if(el) attachBadgeToElement(el, c); } catch(e){}
-            }
-          }
-        }
-        // continue loop immediately for next batch
-      } catch(err){
-        // network or abort -> break if aborted, otherwise retry after a short wait
-        if(err.name === 'AbortError') break;
-        console.error('longpoll error', err);
-        await new Promise(r=>setTimeout(r, 2000));
+  // ── Load notes for this page ──────────────────────────────────────────────
+  function loadNotes() {
+    chrome.runtime.sendMessage(
+      { type: 'LOAD_NOTES', url: location.href },
+      (resp) => {
+        if (!resp || !resp.ok) return;
+        (resp.notes || []).forEach(placeBadge);
       }
-    }
+    );
   }
 
-  async function startLongPoll(){
-    await longPollLoop();
-  }
-  async function stopLongPoll(){ if(longPollAbort){ try{ longPollAbort.abort(); } catch(e){} longPollAbort = null; } }
+  loadNotes();
 
-  // Start/stop longpoll based on active cospace
-  getActiveCospaceId().then((id)=>{ if(id) startLongPoll(); });
-  chrome.storage.onChanged.addListener((changes, area)=>{
-    if(area === 'local' && changes.activeCospaceId){
-      const v = changes.activeCospaceId.newValue;
-      if(v){ lastSeenId = 0; startLongPoll(); } else stopLongPoll();
+  // ── Element-picking mode ──────────────────────────────────────────────────
+  let pickMode = false;
+  let hovered = null;
+
+  function enterPickMode() {
+    pickMode = true;
+    document.addEventListener('mouseover', onOver, true);
+    document.addEventListener('click', onPick, true);
+    toast('Click an element to anchor your note…');
+  }
+
+  function exitPickMode() {
+    pickMode = false;
+    document.removeEventListener('mouseover', onOver, true);
+    document.removeEventListener('click', onPick, true);
+    if (hovered) { hovered.classList.remove('cdx-pick-outline'); hovered = null; }
+  }
+
+  function onOver(e) {
+    if (hovered && hovered !== e.target) hovered.classList.remove('cdx-pick-outline');
+    hovered = e.target;
+    hovered.classList.add('cdx-pick-outline');
+  }
+
+  function onPick(e) {
+    if (!pickMode) return;
+    e.preventDefault(); e.stopPropagation();
+    const selector = computeSelector(e.target);
+    exitPickMode();
+    window.postMessage({ type: 'CDX_ANCHOR_PICKED', selector }, '*');
+  }
+
+  // ── Messages from popup ───────────────────────────────────────────────────
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg.type === 'CDX_PICK_MODE') enterPickMode();
+    if (msg.type === 'CDX_RELOAD_NOTES') {
+      badges.forEach(({ badge }) => badge.remove());
+      badges.length = 0;
+      loadNotes();
     }
   });
-
 })();

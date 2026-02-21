@@ -1,15 +1,27 @@
 {
   "manifest_version": 3,
-  "name": "Codocs Extension",
-  "version": "0.1.0",
-  "description": "Codocs in-page comments demo",
-  "permissions": ["activeTab", "scripting"],
+  "name": "Codocs",
+  "version": "0.2.0",
+  "description": "Federated sticky notes on the web, powered by ActivityPub",
+  "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
-  "action": {},
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Codocs"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "run_at": "document_idle"
     }
-  ]
+  ],
+  "options_ui": {
+    "page": "admin.html",
+    "open_in_tab": true
+  }
 }

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codocs</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      width: 340px;
+      background: #0f172a;
+      color: #f1f5f9;
+      font-size: 13px;
+    }
+    header {
+      background: #1e293b;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    header h1 { font-size: 15px; flex: 1; }
+    header small { color: #94a3b8; font-size: 11px; }
+    .btn {
+      display: inline-block;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-danger  { background: #ef4444; color: #fff; }
+    .btn-danger:hover  { background: #dc2626; }
+    .btn-ghost  { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-ghost:hover  { color: #f1f5f9; border-color: #94a3b8; }
+    .section { padding: 12px 16px; border-bottom: 1px solid #1e293b; }
+    input, textarea {
+      width: 100%;
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    input:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+    label { color: #94a3b8; font-size: 11px; display: block; margin-top: 8px; }
+    .error { color: #f87171; font-size: 11px; margin-top: 4px; }
+    .success { color: #4ade80; font-size: 11px; margin-top: 4px; }
+    .note-list { max-height: 200px; overflow-y: auto; }
+    .note-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e293b;
+      font-size: 12px;
+    }
+    .note-item .meta { color: #64748b; font-size: 10px; margin-top: 2px; }
+    .note-item .body { margin-top: 4px; word-break: break-word; }
+    #note-anchor { color: #60a5fa; font-size: 11px; margin-top: 4px; }
+    .row { display: flex; gap: 8px; margin-top: 8px; }
+    .row .btn { flex: 1; }
+    #view-auth, #view-notes { display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📌 Codocs</h1>
+    <small id="hdr-user"></small>
+    <button class="btn btn-ghost" id="btn-logout" style="display:none;padding:3px 8px">Sign out</button>
+  </header>
+
+  <!-- Auth view -->
+  <div class="section" id="view-auth">
+    <label>Server URL</label>
+    <input id="inp-server" placeholder="http://localhost:8080" />
+    <label>Username</label>
+    <input id="inp-username" placeholder="alice" />
+    <label>Password</label>
+    <input id="inp-password" type="password" />
+    <div class="row">
+      <button class="btn btn-primary" id="btn-login">Sign in</button>
+      <button class="btn btn-ghost" id="btn-register">Register</button>
+    </div>
+    <div id="auth-msg"></div>
+  </div>
+
+  <!-- Notes view -->
+  <div id="view-notes">
+    <div class="section">
+      <strong>Notes on this page</strong>
+      <div class="note-list" id="note-list">
+        <div style="color:#64748b;padding:6px 0">Loading…</div>
+      </div>
+    </div>
+    <div class="section">
+      <strong>Add a note</strong>
+      <div id="note-anchor">No element selected</div>
+      <label>Note text</label>
+      <textarea id="inp-body" rows="3" placeholder="Your note…"></textarea>
+      <div class="row">
+        <button class="btn btn-ghost" id="btn-pick">Pick element</button>
+        <button class="btn btn-primary" id="btn-submit">Post note</button>
+      </div>
+      <div id="note-msg"></div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

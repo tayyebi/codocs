@@ -1,77 +1,86 @@
-# Codocs (Comments for the web) 🚀
+# Codocs — Federated Sticky Notes 📌
 
-A minimal demo implementing a browser extension (Chrome/Firefox) and a Flask backend that lets teams collaborate and comment on page elements.
+A federated sticky-note platform for the web, powered by **Rust**, **ActivityPub**, and **PostgreSQL**. Anyone can run their own Codocs node; notes are shared across instances via ActivityPub federation. The browser extension is the only front-end — including the admin area.
 
-Features:
-- Annotate (anchor comments) to page elements via a selector
-- Dashboard to browse comments
-- Teams and Codocs (basic models)
-- Real-time updates via Socket.IO (room-based)
-- Export comments to GitHub Gist
+## Architecture
 
-## Quick start
-
-1. Backend
-
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-# (optional) set environment variables in .env
-python app.py
+```
+┌──────────────────────────────┐     ActivityPub      ┌──────────────────┐
+│  Browser Extension           │ ←──────────────────→ │  Remote Codocs   │
+│  (popup / content / admin)   │                       │  Node            │
+└──────────┬───────────────────┘                       └──────────────────┘
+           │ REST API (JWT)
+           ▼
+┌──────────────────────────────┐
+│  Codocs Server (Rust binary) │
+│  actix-web + sqlx            │
+└──────────┬───────────────────┘
+           │
+     ┌─────▼─────┐
+     │ PostgreSQL │
+     └───────────┘
 ```
 
-2. Load the extension
+## Quick start (Docker)
 
-- Open Chrome: chrome://extensions
-- Enable Developer mode
-- Load unpacked extension -> select `extension/` folder
+```bash
+cp .env.example .env   # edit POSTGRES_PASSWORD, JWT_SECRET, INSTANCE_DOMAIN
+docker compose up -d
+```
 
-3. Use the extension
+The server listens on port **8080** by default.
 
-- Click extension icon to open popup
-- Sign in (opens GitHub OAuth in server if configured)
-- Create a team / codoc via API or UI
-- Enable comment mode and click an element to anchor a comment
-- Open the Dashboard (Options) to see all comments
-- Export to GitHub Gist from the Dashboard (either enter a token or connect via `Connect GitHub Gist` to store a token securely on your account)
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | — | PostgreSQL connection string |
+| `JWT_SECRET` | `change-me-in-production` | Secret for signing JWTs |
+| `INSTANCE_DOMAIN` | `localhost` | Public domain of this node |
+| `INSTANCE_URL` | `http://localhost:8080` | Full public URL of this node |
+| `PORT` | `8080` | HTTP listen port |
 
 ## API Endpoints
 
-- `POST /api/teams` — create team
-- `GET /api/teams` — list teams (user)
-- `GET /api/teams/<id>/members` — list team members and roles
-- `POST /api/cospaces` — create a cospace
-- `POST /api/comments` — post anchored comment (checks team membership)
-- `GET /api/comments/<cospace_id>` — list comments
-- `POST /api/export/github` — export cospace comments to a GitHub Gist
+### Auth
+- `POST /api/auth/register` – register a new account
+- `POST /api/auth/login` – get a JWT token
 
-## Notes & Next steps
-- This is a minimal demo to get you started. Security (CSRF, permissions), better selector generation, team roles & access checks, and robust client state should be added for production.
-- Consider storing GitHub tokens securely (do not store plain tokens without precautions).
+### Notes
+- `GET  /api/notes?url=<page-url>` – list notes for a page (local + federated)
+- `POST /api/notes` – create a sticky note `{ page_url, body, selector? }`
+- `DELETE /api/notes/:id` – delete a note (author or admin)
 
-## Team Roles
-- Role-based access: Owner/Admin/Member/Viewer
-- Owner can manage team, transfer ownership, and set members' roles.
-- Admins can add/remove members and change roles (not ownership), members can comment, viewers read-only.
+### Admin (requires admin JWT)
+- `GET    /api/admin/users` – list all users
+- `DELETE /api/admin/users/:id` – delete a user
+- `POST   /api/admin/users/:id/promote` – promote user to admin
 
-## Docker image
+### ActivityPub
+- `GET  /.well-known/webfinger?resource=acct:user@domain` – WebFinger discovery
+- `GET  /users/:username` – Actor document
+- `POST /users/:username/inbox` – receive Follow / Create / Undo / Delete
+- `GET  /users/:username/outbox` – user's recent notes
 
-A Dockerfile is included in `backend/Dockerfile`. The CI builds and pushes images to GitHub Container Registry as part of the `CI` workflow (tags: `ghcr.io/<owner>/codocs:latest` and by sha).
+## Extension
 
-## Extension packaging
+Load the `extension/` directory as an **unpacked extension** in Chrome / Edge / Firefox:
 
-The `extension/` directory contains the extension sources. The CI packages the extension into a ZIP and uploads it as a workflow artifact. You can also load the unpacked extension during development.
+1. Open `chrome://extensions` (or `about:debugging` in Firefox)
+2. Enable **Developer mode**
+3. **Load unpacked** → select `extension/`
 
-New features in this update:
-- Polished members management UI (modal with inline role dropdowns) in the extension popup.
-- In-page real-time notifications and badges: the content script polls new comments for the active CoSpace and shows toast notifications and spatial badges on matched elements.
-- GitHub Gist export: you can now connect your GitHub account via `/auth/github_export_login` (button in dashboard) to store an encrypted Gist token server-side for seamless exports. Note: tokens are encrypted with the app SECRET_KEY; for production use a secure vault.
+The popup lets you register, sign in, pick elements, and post notes.  
+Open **Options** (right-click extension icon → Options) for the admin area.
 
-Long polling and reliability
-- The content script now uses a long-poll endpoint `/api/comments/longpoll/<cospace_id>?since_id=<id>` to receive new comments with a persistent request (timeout 25s). This reduces periodic polling churn and delivers comments as soon as they become available.
+## Federation
 
-UX improvements
-- Members modal now supports search and sort, and changing roles/removing members uses a confirmation dialog to avoid mistakes. The popup UI also persists the active CoSpace so in-page notifications know where to poll.
+To follow a remote user and receive their notes, a remote server sends a `Follow` activity to your inbox. Your server auto-accepts follows and begins delivering `Create` activities when notes are posted.
+
+## Server development
+
+```bash
+cd server
+cargo build            # or `cargo run` (requires DATABASE_URL env var at runtime)
+```
 

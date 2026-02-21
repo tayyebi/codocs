@@ -3,46 +3,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
-# Distribution / packaging
-build/
-dist/
-downloads/
-eggs/
-.eggs/
-*.egg-info/
-.installed.cfg
-*.egg
-pip-wheel-metadata/
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-.pytest_cache/
+# Rust build artifacts
+server/target/
 
 # Virtual environments
-.env
-.env.*
 venv/
-ENV/
-env/
 .venv/
-venv.bak/
-*.venv
+env/
+ENV/
 
 # IDEs & editors
 .vscode/
@@ -65,6 +33,7 @@ instance/
 # Docker local overrides
 docker-compose.override.yml
 .env.local
+.env
 
 # Node
 node_modules/
@@ -72,11 +41,6 @@ node_modules/
 # Extension build outputs
 extension/build/
 extension/dist/
-
-# Python artifacts
-*.pyc
-*.pyo
-*.pyd
 
 # Misc
 coverage.xml
